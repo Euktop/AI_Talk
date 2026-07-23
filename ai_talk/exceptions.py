@@ -1,11 +1,11 @@
 class AITalkError(Exception):
-    """Базовый класс для всех ошибок AI_Talk."""
+    """Базовая ошибка библиотеки."""
     pass
 
 class AITalkConnectionError(AITalkError):
-    """Ошибка подключения к локальному серверу (Ollama)."""
+    """Ошибка подключения к Ollama."""
     pass
 
 class AITalkGenerationError(AITalkError):
-    """Ошибка генерации ответа (например, модель не вернула валидный JSON)."""
+    """Ошибка при запросе к ИИ."""
     pass
