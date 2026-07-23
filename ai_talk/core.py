@@ -2,15 +2,22 @@ import ollama
 from pathlib import Path
 from typing import Union
 from .exceptions import AITalkConnectionError, AITalkGenerationError
+from .models import ModelRole, MODEL_REGISTRY
 
 class AITalk:
     """
     Локальная библиотека для работы с Ollama.
     Умеет принимать как путь к файлу, так и обычный текст.
+    Поддерживает абстракцию моделей через ModelRole.
     """
     
-    def __init__(self, model: str = "qwen2.5:3b", host: str = "http://localhost:11434"):
-        self.model = model
+    def __init__(self, model: Union[str, ModelRole] = ModelRole.BASE, host: str = "http://localhost:11434"):
+        # Определяем реальное имя модели
+        if isinstance(model, ModelRole):
+            self.model_name = MODEL_REGISTRY[model]
+        else:
+            self.model_name = model
+            
         self.client = ollama.Client(host=host)
         self._check_connection()
 
@@ -20,7 +27,7 @@ class AITalk:
             self.client.list()
         except Exception as e:
             raise AITalkConnectionError(
-                f"Не удалось подключиться к Ollama по адресу {self.client.host}. "
+                f"Не удалось подключиться к Ollama ({self.client.host}). "
                 "Убедитесь, что Ollama запущена."
             ) from e
 
@@ -38,7 +45,6 @@ class AITalk:
     def get_text(self, source: Union[str, Path]) -> str:
         """
         Читает файл (или принимает сырой текст) и возвращает чистую строку.
-        Используется, если вам нужно просто получить контент файла в свой скрипт.
         """
         return self._resolve_source(source)
 
@@ -61,7 +67,7 @@ class AITalk:
 
         try:
             response = self.client.chat(
-                model=self.model,
+                model=self.model_name,
                 messages=messages,
                 options={"temperature": temperature}
             )
