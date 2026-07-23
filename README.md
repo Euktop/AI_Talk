@@ -1,104 +1,82 @@
-# 🧠 AI_Talk
+# 🧠 AI_Talk v2.0
 
-**AI_Talk** — это легковесная Python-библиотека для безопасного и структурированного взаимодействия с локальными LLM через [Ollama](https://ollama.com/).
+**AI_Talk** — это легковесная Python-библиотека для безопасного и структурированного взаимодействия с локальными LLM через [Ollama](https://ollama.com/). 
+Библиотека построена на принципах **Clean Architecture**, **SOLID** и **DRY**, что обеспечивает высокую тестируемость, расширяемость и независимость от внешних фреймворков.
 
-Главная особенность — **универсальный ввод** и **абстракция моделей**. Библиотека сама определяет, передали вы ей путь к файлу или обычный текст, и позволяет выбирать "характер" модели (Быстрая/Умная) без знания её точного технического имени.
+## 🏗 Архитектура (Clean Architecture)
+
+Код строго разделен на слои с инверсией зависимостей (DIP):
+
+1. **Domain Layer (Ядро)**: 
+   - `interfaces.py`: Абстракции (`ILLMClient`, `IFileReader`).
+   - `exceptions.py`: Доменные исключения.
+   - *Не зависит ни от каких внешних библиотек.*
+2. **Application Layer (Прикладной уровень)**:
+   - `use_cases.py`: Бизнес-логика (`AskAIUseCase`, `GetTextUseCase`).
+   - `prompts.py`: Хранилище промптов.
+3. **Infrastructure Layer (Инфраструктура)**:
+   - `ollama_client.py`: Реализация `ILLMClient` для Ollama.
+   - `custom_client.py`: Реализация `ILLMClient` для ручного режима через файлы.
+   - `file_reader.py`: Реализация `IFileReader` для локальной ФС.
+4. **Adapters Layer (Адаптеры)**:
+   - `facade.py`: Класс `AITalk`, который связывает всё воедино и предоставляет публичный API.
 
 ## 🚀 Возможности
+
 1. **Умный парсинг ввода**: Автоматически отличает путь к `.md` / `.txt` файлу от обычной строки.
-2. **Интерфейс для ИИ (`ask_ai`)**: Читает данные и отправляет их в локальную нейросеть.
-3. **Интерфейс для кода (`get_text`)**: Читает данные и отдает их в ваш Python-скрипт.
-4. **Абстракция моделей (`ModelRole`)**: Используйте роли (`FAST`, `SMART`, `BASE`), а не хардкод названий.
+2. **Абстракция моделей (`ModelRole`)**: Используйте роли (`FAST`, `SMART`, `BASE`, `CUSTOM`), а не хардкод названий.
+3. **CUSTOM-режим**: Ручная имитация ИИ через файлы. Идеально для отладки и сценариев, где ответ пишет человек.
+4. **Структурированный вывод**: Поддержка `ask_ai_structured` для получения валидного JSON.
 5. **Fail-Safe**: Автоматическая проверка подключения к Ollama при старте.
 
 ## 📦 Установка
 
-1. Убедитесь, что у вас установлена и запущена [Ollama](https://ollama.com/).
-2. Скачайте нужные модели (например, `ollama pull qwen2.5:3b`).
-3. Установите библиотеку из исходников:
-   ```bash
-   cd D:\repos\AI_Talk
-   pip install -e .
-   ```
+1. Убедитесь, что у вас установлена и запущена [Ollama](https://ollama.com/) (не нужно для CUSTOM-режима).
+2. Установите библиотеку:
+```bash
+pip install -e .
+```
 
 ## 💻 Примеры использования
 
-### 1. Передача файла в ИИ (Анализ заметки)
-Вы можете передать путь к файлу напрямую. Библиотека сама его прочитает и отправит в нейросеть.
-
+### 1. Базовый запрос к ИИ
 ```python
 from ai_talk import AITalk, ModelRole
 
-# Инициализация с ролью FAST (внутри это qwen2.5:3b)
 ai = AITalk(model=ModelRole.FAST)
-
-file_path = "D:\\My_notes\\00 Входящие\\мысли.md"
-response = ai.ask_ai(
-    source=file_path,
-    system_prompt="Ты редактор. Исправь ошибки и верни JSON."
-)
-
-print(response)
-```
-
-### 2. Передача обычного текста в ИИ
-Если у вас уже есть строка в коде, просто передайте её.
-
-```python
-from ai_talk import AITalk, ModelRole
-
-ai = AITalk(model=ModelRole.SMART)
-
 response = ai.ask_ai("Привет! Как оптимизировать SQL-запрос?")
 print(response)
 ```
 
-### 3. Получение текста из файла в свой скрипт
-Если вам нужно просто прочитать файл в свою программу, не обращаясь к ИИ.
-
+### 2. Анализ файла
 ```python
-from ai_talk import AITalk
+from ai_talk import AITalk, ModelRole, Prompts
 
-ai = AITalk()
-
-# Читаем файл в переменную
-content = ai.get_text("D:\\My_notes\\00 Входящие\\мысли.md")
-print(f"Длина текста: {len(content)} символов")
-
-# Или просто передаем строку, она вернется как есть
-raw_text = ai.get_text("Просто какой-то текст")
+ai = AITalk(model=ModelRole.SMART)
+response = ai.ask_ai_structured(
+    source="D:\\My_notes\\мысли.md",
+    system_prompt=Prompts.OBSIDIAN_TAGGER
+)
+print(response["tags"])
 ```
 
-### 4. Использование ролей моделей (ModelRole)
-Вам не нужно помнить, что `qwen2.5:3b` — это быстрая модель, а `llama3:8b` — умная. Просто используйте роли.
-
+### 3. CUSTOM-режим (Ручная имитация ИИ)
 ```python
 from ai_talk import AITalk, ModelRole
 
-# Для простых задач (теги, опечатки) -> быстрая модель
-ai_fast = AITalk(ModelRole.FAST) 
-
-# Для глубокого анализа -> умная модель
-ai_smart = AITalk(ModelRole.SMART)
-
-# Если нужно передать точное имя модели из Ollama (редко):
-ai_custom = AITalk("llama3.2:1b")
+ai = AITalk(ModelRole.CUSTOM, custom_dir="запросы_к_ии")
+response = ai.ask_ai(
+    source="Исправь ошибки: привт мир",
+    system_prompt="Ты редактор."
+)
 ```
 
 ## 🛠 Обработка ошибок
-
-Библиотека использует кастомные исключения для точного контроля:
-
 ```python
 from ai_talk import AITalk, AITalkConnectionError, AITalkGenerationError
 
 try:
     ai = AITalk()
 except AITalkConnectionError:
-    print("Ollama не запущена! Запустите `ollama serve`.")
-
-try:
-    ai.ask_ai("Текст")
-except AITalkGenerationError:
-    print("ИИ не смог сгенерировать ответ.")
+    print("Ollama не запущена!")
 ```

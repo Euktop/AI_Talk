@@ -3,7 +3,7 @@ class AITalkError(Exception):
     pass
 
 class AITalkConnectionError(AITalkError):
-    """Ошибка подключения к Ollama."""
+    """Ошибка подключения к LLM."""
     pass
 
 class AITalkGenerationError(AITalkError):

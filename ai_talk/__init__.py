@@ -1,12 +1,14 @@
-from .core import AITalk
-from .models import ModelRole
-from .exceptions import AITalkError, AITalkConnectionError, AITalkGenerationError
+from ai_talk.adapters.facade import AITalk
+from ai_talk.config.models import ModelRole
+from ai_talk.domain.exceptions import AITalkError, AITalkConnectionError, AITalkGenerationError
+from ai_talk.application.prompts import Prompts
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 __all__ = [
-    "AITalk", 
+    "AITalk",
     "ModelRole",
-    "AITalkError", 
-    "AITalkConnectionError", 
+    "Prompts",
+    "AITalkError",
+    "AITalkConnectionError",
     "AITalkGenerationError"
 ]
