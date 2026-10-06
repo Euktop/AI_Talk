@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: ai_talk
-Version: 1.1.0
-Summary: Локальная библиотека-обёртка для взаимодействия с Ollama LLM
-Author-email: Euktop <your@email.com>
-Requires-Python: >=3.8
-Requires-Dist: ollama>=0.1.0

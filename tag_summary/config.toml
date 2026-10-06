@@ -1,0 +1,31 @@
+# Конфигурация tag_summary.
+
+[vault]
+path = "D:/Work/My_notes"
+
+[tag_summary]
+threshold = 3
+
+# Cluster: до 800 тегов за один LLM-запрос (custom/web).
+# Для local (Ollama 4K контекст) снижай до 300.
+cluster_batch_size = 800
+
+max_tags_per_file = 5
+validator_script = "D:/repos/Obsidian Tools/ObsidianValidator/main.py"
+
+# "local"  — Ollama
+# "web"    — ActantAI через браузер
+# "custom" — ручной режим через файлы custom_queue/
+llm_backend = "custom"
+web_provider = "deepseek"
+
+# Директория для файлов ручного режима.
+custom_dir = "custom_queue"
+
+# Сколько файлов помещать в один custom-файл (один LLM-запрос).
+# 1..16.
+files_per_batch = 16
+
+# Сколько custom-файлов открывать одновременно.
+# 1..8.
+max_parallel = 8

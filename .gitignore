@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv*/
+.venv_clean/
+# Локальные отчёты аудита AI_Talk (не часть репо)
+ai_talk/docs/AUDIT.md
+ai_talk/docs/build_diff.txt
+ai_talk/docs/build_content_diff.txt
+ai_talk/docs/public_defs.txt
+ai_talk/docs/tree.txt
