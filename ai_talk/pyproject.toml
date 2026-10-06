@@ -14,6 +14,11 @@ dependencies = [
 
 [project.optional-dependencies]
 web = ["actantai"]
+dev = ["pytest>=7"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
 
 [tool.setuptools.packages.find]
 where = ["."]
