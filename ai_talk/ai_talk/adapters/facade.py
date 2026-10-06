@@ -213,7 +213,12 @@ class AITalk:
         if isinstance(self.llm_client, OllamaClient):
             try:
                 response = self.llm_client.client.list()
-                models = [m.get("name", "") for m in response.get("models", [])]
+                raw_models = response.get("models", []) or []
+                models = [
+                    m.get("name") or m.get("model") or ""
+                    for m in raw_models
+                ]
+                models = [name for name in models if name]
                 ollama_ok = True
             except Exception:
                 ollama_ok = False

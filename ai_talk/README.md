@@ -1,4 +1,4 @@
-# 🧠 AI_Talk v2.0
+# 🧠 AI_Talk v2.2
 
 **AI_Talk** — это легковесная Python-библиотека для безопасного и структурированного взаимодействия с локальными LLM через [Ollama](https://ollama.com/). 
 Библиотека построена на принципах **Clean Architecture**, **SOLID** и **DRY**, что обеспечивает высокую тестируемость, расширяемость и независимость от внешних фреймворков.
@@ -37,7 +37,44 @@
 pip install -e .
 ```
 
-## 💻 Примеры использования
+## 🆕 Что нового в 2.2
+
+- **Конфигурация**: `AITalkConfig` с дефолтами, совпадающими с 2.1.
+- **Новый API**: `ask`, `ask_file`, `ask_json`, `run_template`, `health_check`.
+- **Шаблоны**: `spellcheck`, `obsidian_tagger` + регистрация своих.
+- **`actantai` — опциональная зависимость**: `pip install ai_talk` тянет только `ollama`.
+
+### Новый API (рекомендуется)
+
+```python
+from ai_talk import AITalk, ModelRole, AITalkConfig
+
+ai = AITalk(config=AITalkConfig(model_role=ModelRole.SMART))
+
+print(ai.ask("Объясни RAG"))
+print(ai.ask_file("note.md"))
+print(ai.run_template("spellcheck", source="article.md"))
+print(ai.health_check())
+```
+
+### Свой шаблон
+
+```python
+from ai_talk import AITalk, TemplateSpec
+
+ai = AITalk()
+ai.register_template(TemplateSpec(
+    name="summarize_ru",
+    system_prompt="Сделай краткий пересказ на русском. Верни JSON.",
+    output_format="json",
+    temperature=0.2,
+))
+result = ai.run_template("summarize_ru", source="note.md")
+```
+
+## 💻 Примеры использования (совместимый API)
+
+Всё, что работало в 2.1, работает и в 2.2 без изменений.
 
 ### 1. Базовый запрос к ИИ
 ```python
