@@ -53,9 +53,9 @@ Exit: старые вызовы работают, новые тоже.
 
 ## Фаза 5. Шаблоны
 
-- [ ] `ai_talk/templates.py` — `TemplateSpec`, `TemplateRegistry`, `default_registry()`.
-- [ ] Встроенные: `spellcheck`, `obsidian_tagger`, `summarize`, `extract_tasks`.
-- [ ] `AITalk.run_template`, `AITalk.register_template`.
+- [x] `ai_talk/templates.py` — `TemplateSpec`, `TemplateRegistry`, `default_registry()`.
+- [~] Встроенные: `spellcheck`, `obsidian_tagger`. `summarize`, `extract_tasks` — отложены до 2.2.
+- [x] `AITalk.run_template`, `AITalk.register_template`.
 
 Exit: `ai.run_template("spellcheck", source=...)` возвращает тот же `dict`,
 что и старый `ask_ai_structured(..., Prompts.SPELL_CHECKER)`.

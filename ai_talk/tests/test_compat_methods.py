@@ -23,6 +23,7 @@ def test_aitalk_init_signature():
         "config",
         "llm_client",
         "file_reader",
+        "template_registry",
     ]
     # Позиционные (или position-or-keyword) параметры и их дефолты — фиксированы.
     assert params["model"].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
@@ -31,7 +32,7 @@ def test_aitalk_init_signature():
     assert params["custom_dir"].default == "запросы_к_ии"
     assert params["browser_instance_id"].default == 0
     # Новые параметры — keyword-only и по умолчанию None.
-    for name in ("config", "llm_client", "file_reader"):
+    for name in ("config", "llm_client", "file_reader", "template_registry"):
         assert params[name].kind == inspect.Parameter.KEYWORD_ONLY
         assert params[name].default is None
 

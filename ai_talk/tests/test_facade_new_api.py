@@ -66,11 +66,24 @@ def test_ask_json_uses_structured_chat():
     assert response_format == "json"
 
 
-def test_ask_json_with_template_raises_not_implemented():
+def test_ask_json_with_template_uses_system_prompt():
+    fake = FakeLLMClient(structured_responses=[{"corrections": []}])
+    ai = AITalk(llm_client=fake)
+    result = ai.ask_json("проверь", template="spellcheck")
+    assert result == {"corrections": []}
+    messages, fmt = fake.structured_calls[0]
+    assert fmt == "json"
+    assert messages[0].role == "system"
+    assert "редактор" in messages[0].content.lower()
+
+
+def test_ask_json_with_unknown_template_raises():
+    from ai_talk.errors import AITalkConfigError
+
     fake = FakeLLMClient()
     ai = AITalk(llm_client=fake)
-    with pytest.raises(NotImplementedError):
-        ai.ask_json("x", template="spellcheck")
+    with pytest.raises(AITalkConfigError):
+        ai.ask_json("x", template="nope")
 
 
 def test_ask_uses_config_temperature():

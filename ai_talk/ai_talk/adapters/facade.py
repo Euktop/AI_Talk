@@ -10,6 +10,7 @@ from ai_talk.infrastructure.custom_client import CustomFileClient
 from ai_talk.infrastructure.file_reader import LocalFileReader
 from ai_talk.infrastructure.ollama_client import OllamaClient
 from ai_talk.application.use_cases import AskAIUseCase, GetTextUseCase
+from ai_talk.templates import TemplateRegistry, TemplateSpec, default_registry
 
 
 @dataclass
@@ -39,7 +40,11 @@ class AITalk:
         config: Optional[AITalkConfig] = None,
         llm_client: Optional[ILLMClient] = None,
         file_reader: Optional[IFileReader] = None,
+        template_registry: Optional[TemplateRegistry] = None,
     ):
+        self.template_registry: TemplateRegistry = (
+            template_registry if template_registry is not None else default_registry()
+        )
         if config is not None:
             self._config = config
             effective_model: Union[str, ModelRole] = config.model_role
@@ -171,11 +176,35 @@ class AITalk:
         template будет реализован в Фазе 5 (docs/MIGRATION.md).
         """
         if template is not None:
-            raise NotImplementedError(
-                "template будет добавлен в Фазе 5 (см. docs/MIGRATION.md)"
-            )
+            spec = self.template_registry.get(template)
+            messages = self._build_user_messages(prompt, source, spec.system_prompt)
+            return self.llm_client.structured_chat(messages, "json")
         messages = self._build_user_messages(prompt, source, "")
         return self.llm_client.structured_chat(messages, "json")
+
+    def run_template(
+        self,
+        name: str,
+        *,
+        source: Optional[Union[str, Path]] = None,
+        prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> Any:
+        """Запускает именованный шаблон. Возвращает str или dict.
+
+        Текст или JSON — по spec.output_format. Температура:
+        аргумент > spec.temperature > config.temperature.
+        """
+        spec = self.template_registry.get(name)
+        messages = self._build_user_messages(prompt or "", source, spec.system_prompt)
+        if spec.output_format == "json":
+            return self.llm_client.structured_chat(messages, "json")
+        effective = temperature if temperature is not None else spec.temperature
+        return self.llm_client.chat(messages, self._resolve_temperature(effective))
+
+    def register_template(self, spec: TemplateSpec) -> None:
+        """Регистрирует шаблон. Переопределяет встроенный с тем же именем."""
+        self.template_registry.register(spec)
 
     def health_check(self) -> HealthStatus:
         """Диагностика окружения. Не блокирует."""

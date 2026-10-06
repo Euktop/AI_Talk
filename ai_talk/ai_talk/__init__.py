@@ -11,6 +11,7 @@ from ai_talk.domain.exceptions import (
     AITalkTimeoutError,
 )
 from ai_talk.application.prompts import Prompts
+from ai_talk.templates import TemplateRegistry, TemplateSpec, default_registry
 
 __version__ = "2.1.0"
 __all__ = [
@@ -18,6 +19,9 @@ __all__ = [
     "AITalkConfig",
     "ModelRole",
     "Prompts",
+    "TemplateSpec",
+    "TemplateRegistry",
+    "default_registry",
     "AITalkError",
     "AITalkConnectionError",
     "AITalkGenerationError",
