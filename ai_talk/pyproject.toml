@@ -14,7 +14,8 @@ dependencies = [
 
 [project.optional-dependencies]
 web = ["actantai"]
-dev = ["pytest>=7"]
+ui = ["flask>=3"]
+dev = ["pytest>=7", "flask>=3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
