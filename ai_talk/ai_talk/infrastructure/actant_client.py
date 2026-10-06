@@ -2,13 +2,6 @@ import sys
 from typing import List, Dict, Any
 import json
 
-# Импорты из ActantAI
-from actantweb import create_actant
-from actantai.application.engine import ActantAIEngine
-from actantai.infrastructure.actantweb_adapter import ActantWebAdapter
-from actantai.infrastructure.providers.deepseek_provider import DeepSeekProvider
-from actantai.domain.ports import Prompt
-
 # Импорты из AI_Talk
 from ai_talk.domain.interfaces import ILLMClient, Message
 from ai_talk.domain.exceptions import AITalkGenerationError
@@ -23,8 +16,17 @@ class ActantAIClient(ILLMClient):
         self._initialize_browser(instance_id)
 
     def _initialize_browser(self, instance_id: int):
-        """Ленивая инициализация браузера."""
+        """Инициализация браузера ActantAI.
+
+        Импорты actantai/actantweb выполняются здесь, чтобы пакет ai_talk
+        импортировался без установленного actantai (см. optional-dependencies).
+        """
         try:
+            from actantweb import create_actant
+            from actantai.application.engine import ActantAIEngine
+            from actantai.infrastructure.actantweb_adapter import ActantWebAdapter
+            from actantai.infrastructure.providers.deepseek_provider import DeepSeekProvider
+
             actant_web = create_actant(instance_id=instance_id)
             self._browser_adapter = ActantWebAdapter(actant_web)
             self._engine = ActantAIEngine()
@@ -37,8 +39,10 @@ class ActantAIClient(ILLMClient):
         except Exception as e:
             raise AITalkGenerationError(f"Не удалось инициализировать браузер для ActantAI: {e}")
 
-    def _prepare_prompt(self, messages: List[Message]) -> Prompt:
+    def _prepare_prompt(self, messages: List[Message]):
         """Маппинг списка сообщений AI_Talk в объект Prompt от ActantAI."""
+        from actantai.domain.ports import Prompt  # локальный импорт
+
         system_prompt = ""
         user_text_parts = []
         

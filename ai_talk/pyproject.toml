@@ -10,8 +10,10 @@ description = "Локальная библиотека-обёртка для в�
 requires-python = ">=3.8"
 dependencies = [
     "ollama>=0.1.0",
-    "actantai",
 ]
+
+[project.optional-dependencies]
+web = ["actantai"]
 
 [tool.setuptools.packages.find]
 where = ["."]
