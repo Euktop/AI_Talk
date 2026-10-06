@@ -1,11 +1,24 @@
-class AITalkError(Exception):
-    """Базовая ошибка библиотеки."""
-    pass
+"""Совместимость: исключения переехали в ai_talk.errors.
 
-class AITalkConnectionError(AITalkError):
-    """Ошибка подключения к LLM."""
-    pass
+См. docs/COMPATIBILITY.md. Импорт отсюда продолжает работать.
+Канонический источник — ai_talk.errors.
+"""
+from ai_talk.errors import (
+    AITalkConfigError,
+    AITalkConnectionError,
+    AITalkError,
+    AITalkFileError,
+    AITalkGenerationError,
+    AITalkParsingError,
+    AITalkTimeoutError,
+)
 
-class AITalkGenerationError(AITalkError):
-    """Ошибка при запросе к ИИ."""
-    pass
+__all__ = [
+    "AITalkError",
+    "AITalkConnectionError",
+    "AITalkGenerationError",
+    "AITalkParsingError",
+    "AITalkTimeoutError",
+    "AITalkFileError",
+    "AITalkConfigError",
+]

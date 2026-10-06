@@ -28,7 +28,8 @@ Exit: `pytest` зелёный (кроме намеренно падающих т
 
 - [ ] `ai_talk/parsers.py` — `extract_json`, `parse_json_object`, `parse_json_array`.
 - [ ] `ai_talk/errors.py` — расширенная иерархия (старые классы — там же).
-- [ ] `ai_talk/config.py` — `AITalkConfig` с дефолтами = старому поведению.
+- [ ] `ai_talk/config/__init__.py` — `AITalkConfig` с дефолтами = старому поведению.
+  (`ai_talk/config.py` создать нельзя — уже есть пакет `ai_talk/config/`.)
 
 Exit: новые модули импортируются, старые не тронуты, тесты зелёные.
 
