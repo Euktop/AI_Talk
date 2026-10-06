@@ -24,7 +24,7 @@ DEFAULT_WAIT_TIMEOUT = 3600.0
 
 def create_app(storage: Storage, static_dir: Optional[Path] = None) -> Flask:
     """Создаёт Flask-приложение. Без запуска сервера — для тестов."""
-    app = Flask(__name__, static_folder=None)
+    app = Flask(__name__, static_folder="static", static_url_path="/static")
     app.config["STORAGE"] = storage
     app.config["STATIC_DIR"] = static_dir
 
@@ -127,12 +127,16 @@ def create_app(storage: Storage, static_dir: Optional[Path] = None) -> Flask:
 
     @app.route("/")
     def index():
+        static_dir = Path(__file__).parent / "static"
+        index_file = static_dir / "index.html"
+        if index_file.exists():
+            return index_file.read_text(encoding="utf-8")
         return (
             "<!doctype html><html><body>"
             "<h1>AI_Talk CUSTOM UI</h1>"
-            "<p>Фаза 1: сервер работает. UI появится в Фазе 3.</p>"
+            "<p>index.html не найден в {0}</p>"
             "</body></html>"
-        )
+        ).format(static_dir)
 
     return app
 

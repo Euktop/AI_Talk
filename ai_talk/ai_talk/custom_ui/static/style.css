@@ -1,0 +1,136 @@
+/* AI_Talk CUSTOM UI — светлая минималистичная тема */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  color: #202124;
+  background: #f8f9fa;
+  -webkit-font-smoothing: antialiased;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e8eaed;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.counter {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: #e8f0fe;
+  color: #1a73e8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 24px 48px;
+}
+
+.requests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: #ffffff;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.row:hover {
+  background: #fafbfc;
+  border-color: #dadce0;
+}
+
+.row.flash-ok {
+  background: #e6f4ea;
+  border-color: #34a853;
+}
+
+.row.flash-err {
+  background: #fce8e6;
+  border-color: #ea4335;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  color: #202124;
+  word-break: break-word;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.text:hover {
+  color: #1a73e8;
+}
+
+.btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.btn:hover {
+  background: #f1f3f4;
+}
+
+.btn:active {
+  transform: scale(0.94);
+}
+
+.btn:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.empty {
+  display: none;
+  padding: 48px 24px;
+  text-align: center;
+  color: #5f6368;
+  font-size: 15px;
+}
+
+.empty.visible {
+  display: block;
+}

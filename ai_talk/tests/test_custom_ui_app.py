@@ -136,10 +136,27 @@ def test_wait_missing_request_returns_404(client):
     assert r.status_code == 404
 
 
-def test_index_placeholder(client):
+def test_index_returns_html(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert b"AI_Talk" in r.data
+    body = r.data.decode("utf-8")
+    assert "<!doctype html>" in body
+    assert "AI_Talk" in body
+    assert "/static/app.js" in body
+
+
+def test_static_app_js_served(client):
+    r = client.get("/static/app.js")
+    assert r.status_code == 200
+    body = r.data.decode("utf-8")
+    assert "fetchRequests" in body
+    assert "copyToClipboard" in body
+
+
+def test_static_style_css_served(client):
+    r = client.get("/static/style.css")
+    assert r.status_code == 200
+    assert ".row" in r.data.decode("utf-8")
 
 
 def test_answered_request_excluded_from_list(client):
