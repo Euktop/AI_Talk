@@ -2,6 +2,8 @@
 
 HTTP-вызовы и проверка сервера замоканы, тестируем логику клиента.
 """
+from pathlib import Path
+
 import pytest
 
 from ai_talk.domain.interfaces import Message
@@ -12,7 +14,9 @@ from ai_talk.infrastructure.custom_web_client import CustomWebClient
 @pytest.fixture
 def no_server(monkeypatch):
     monkeypatch.setattr(mod, "_is_server_ready", lambda h, p: True)
-    monkeypatch.setattr(mod, "_start_server", lambda h, p, db: True)
+    monkeypatch.setattr(
+        mod, "_start_server", lambda h, p, db, open_browser=False: True
+    )
 
 
 def test_split_messages_system_and_users(no_server):
@@ -128,3 +132,94 @@ def test_unregister_noop_when_not_registered(no_server, monkeypatch):
     client = CustomWebClient(open_browser=False)
     client._unregister()
     assert calls == []
+
+
+def test_start_server_passes_open_browser_flag(monkeypatch):
+    calls = []
+
+    class FakePopen:
+        def __init__(self, cmd, **kw):
+            calls.append(cmd)
+
+    monkeypatch.setattr(mod.subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(
+        mod, "_is_server_ready", lambda h, p: len(calls) > 0
+    )
+    ok = mod._start_server(
+        "127.0.0.1", 8765, Path("x.db"), open_browser=True
+    )
+    assert ok
+    assert calls
+    assert "--open-browser" in calls[0]
+
+
+def test_start_server_skips_open_browser_flag(monkeypatch):
+    calls = []
+
+    class FakePopen:
+        def __init__(self, cmd, **kw):
+            calls.append(cmd)
+
+    monkeypatch.setattr(mod.subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(
+        mod, "_is_server_ready", lambda h, p: len(calls) > 0
+    )
+    ok = mod._start_server(
+        "127.0.0.1", 8765, Path("x.db"), open_browser=False
+    )
+    assert ok
+    assert calls
+    assert "--open-browser" not in calls[0]
+
+
+def test_ensure_registered_rechecks_after_server_death(
+    no_server, monkeypatch
+):
+    """Если сервер умер, _ensure_registered должен перерегистрироваться."""
+    # Сервер сначала жив, потом мёртв
+    state = {"alive": True}
+    monkeypatch.setattr(
+        mod, "_is_server_ready", lambda h, p: state["alive"]
+    )
+    reg_count = [0]
+    start_count = [0]
+
+    def fake_post(url, payload, timeout=30.0):
+        if url.endswith("/register"):
+            reg_count[0] += 1
+        return {"ok": True}
+
+    def fake_start(host, port, db, open_browser=False):
+        start_count[0] += 1
+        state["alive"] = True
+        return True
+
+    monkeypatch.setattr(mod, "_http_post", fake_post)
+    monkeypatch.setattr(mod, "_start_server", fake_start)
+
+    client = CustomWebClient(open_browser=False)
+    client._ensure_registered()
+    assert reg_count[0] == 1
+    assert start_count[0] == 0
+
+    # Сервер умер — следующий вызов должен его поднять
+    state["alive"] = False
+    client._ensure_registered()
+    assert reg_count[0] == 2
+    assert start_count[0] == 1
+
+
+def test_ensure_registered_skips_register_when_alive(no_server, monkeypatch):
+    reg_count = [0]
+
+    def fake_post(url, payload, timeout=30.0):
+        if url.endswith("/register"):
+            reg_count[0] += 1
+        return {"ok": True}
+
+    monkeypatch.setattr(mod, "_http_post", fake_post)
+
+    client = CustomWebClient(open_browser=False)
+    client._ensure_registered()
+    client._ensure_registered()
+    assert reg_count[0] == 1

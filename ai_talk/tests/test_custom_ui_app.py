@@ -179,6 +179,33 @@ def test_app_js_has_paste_and_modal_handlers(client):
     assert "showModal" in body
 
 
+def test_app_js_has_hotkeys_and_current_row(client):
+    r = client.get("/static/app.js")
+    body = r.data.decode("utf-8")
+    assert "copyCurrent" in body
+    assert "pasteIntoCurrent" in body
+    assert "applyCurrentHighlight" in body
+    assert "setCurrentIndex" in body
+    assert "ctrlKey" in body
+    assert "shiftKey" in body
+    assert "rowsCache" in body
+
+
+def test_index_contains_hotkey_hint(client):
+    r = client.get("/")
+    body = r.data.decode("utf-8")
+    assert "Ctrl" in body
+    assert "Shift" in body
+    assert "копировать текущий" in body
+    assert "вставить ответ" in body
+
+
+def test_static_style_has_current_row(client):
+    r = client.get("/static/style.css")
+    css = r.data.decode("utf-8")
+    assert ".row.current" in css
+
+
 def test_answered_request_excluded_from_list(client):
     r = client.post(
         "/api/requests", json={"system_prompt": "s", "user_prompt": "u"}

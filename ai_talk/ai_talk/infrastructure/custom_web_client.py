@@ -13,7 +13,6 @@ import time
 import urllib.error
 import urllib.request
 import uuid
-import webbrowser
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -65,26 +64,31 @@ def _is_server_ready(host: str, port: int) -> bool:
         return False
 
 
-def _start_server(host: str, port: int, db_path: Path) -> bool:
-    """Запускает `python -m ai_talk.custom_ui` в фоне. True при успехе."""
+def _start_server(
+    host: str, port: int, db_path: Path, open_browser: bool = False
+) -> bool:
+    """Запускает `python -m ai_talk.custom_ui` в фоне. True при успехе.
+
+    open_browser=True → сервер сам откроет браузер при старте.
+    """
+    cmd = [
+        sys.executable,
+        "-m",
+        "ai_talk.custom_ui",
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--db",
+        str(db_path),
+    ]
+    if open_browser:
+        cmd.append("--open-browser")
     try:
         kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
         if sys.platform == "win32":
             kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "ai_talk.custom_ui",
-                "--host",
-                host,
-                "--port",
-                str(port),
-                "--db",
-                str(db_path),
-            ],
-            **kwargs
-        )
+        subprocess.Popen(cmd, **kwargs)
     except Exception as e:
         raise AITalkConnectionError(
             "Не удалось запустить CUSTOM UI сервер: {0}".format(e)
@@ -122,15 +126,21 @@ class CustomWebClient:
     # -------- lifecycle --------
 
     def _ensure_registered(self) -> None:
-        if self._registered:
+        # Перепроверяем /health на каждом вызове: сервер мог умереть
+        # между вызовами chat(), например, если пользователь закрыл окно.
+        if self._registered and _is_server_ready(self.host, self.port):
             return
+        self._registered = False
         if not _is_server_ready(self.host, self.port):
-            if not _start_server(self.host, self.port, self.db_path):
+            if not _start_server(
+                self.host,
+                self.port,
+                self.db_path,
+                open_browser=self.open_browser,
+            ):
                 raise AITalkConnectionError(
                     "CUSTOM UI сервер не отвечает на {0}".format(self.base_url)
                 )
-            if self.open_browser:
-                webbrowser.open(self.base_url + "/")
         _http_post(
             self.base_url + "/api/clients/register",
             {"client_id": self.client_id},

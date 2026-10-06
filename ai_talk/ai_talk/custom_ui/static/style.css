@@ -64,12 +64,22 @@ html, body {
   background: #ffffff;
   border: 1px solid #e8eaed;
   border-radius: 8px;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .row:hover {
   background: #fafbfc;
   border-color: #dadce0;
+}
+
+.row.current {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.18);
+  background: #f8fbff;
+}
+
+.row.current:hover {
+  background: #f8fbff;
 }
 
 .row.flash-ok {
@@ -232,4 +242,27 @@ html, body {
 .action-btn.flash-err {
   background: #fce8e6;
   border-color: #ea4335;
+}
+
+/* -------- Hint -------- */
+
+.hint {
+  max-width: 960px;
+  margin: 24px auto 0;
+  padding: 0 24px;
+  color: #5f6368;
+  font-size: 12px;
+  text-align: center;
+}
+
+.hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid #dadce0;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  color: #202124;
 }

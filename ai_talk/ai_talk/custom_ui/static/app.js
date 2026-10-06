@@ -1,7 +1,8 @@
 "use strict";
 
-// AI_Talk CUSTOM UI — список запросов, копирование, вставка, модалка [?].
-// Горячие клавиши A/B — в Фазе 6.
+// AI_Talk CUSTOM UI.
+// Ф5: lifecycle — браузер открывает сервер, клиент перепроверяет /health.
+// Ф6: текущая строка + горячие клавиши A (Ctrl+Shift+C) и B (Ctrl+Shift+V).
 
 const REFRESH_INTERVAL_MS = 2000;
 const FLASH_DURATION_MS = 1500;
@@ -18,6 +19,8 @@ const els = {
 };
 
 let lastRenderedIds = "";
+let rowsCache = [];
+let currentIndex = 0;
 
 // -------- API --------
 
@@ -73,6 +76,7 @@ async function readFromClipboard() {
 // -------- UI helpers --------
 
 function flash(el, cls) {
+  if (!el) return;
   el.classList.remove("flash-ok", "flash-err");
   el.classList.add(cls);
   setTimeout(() => el.classList.remove(cls), FLASH_DURATION_MS);
@@ -91,32 +95,57 @@ function plural(n, forms) {
   return forms[2];
 }
 
-// -------- Actions --------
-
-async function handleCopy(rowEl, requestId) {
-  try {
-    const full = await fetchRaw(requestId);
-    const ok = await copyToClipboard(full);
-    flash(rowEl, ok ? "flash-ok" : "flash-err");
-  } catch (e) {
-    console.error(e);
-    flash(rowEl, "flash-err");
-  }
+function rowAt(idx) {
+  return els.requests.querySelectorAll(".row")[idx];
 }
 
-async function handlePaste(rowEl, requestId) {
+function applyCurrentHighlight() {
+  const rows = els.requests.querySelectorAll(".row");
+  rows.forEach((row, idx) => {
+    row.classList.toggle("current", idx === currentIndex);
+  });
+}
+
+function setCurrentIndex(i) {
+  const n = rowsCache.length;
+  if (n === 0) {
+    currentIndex = 0;
+    return;
+  }
+  if (i < 0) i = n - 1;
+  if (i >= n) i = 0;
+  currentIndex = i;
+  applyCurrentHighlight();
+}
+
+// -------- Actions --------
+
+async function handleCopy(rowEl, requestId, rowIndex, isHotkey) {
+  setCurrentIndex(rowIndex);
+  const isLast = rowIndex === rowsCache.length - 1;
+  let text;
+  if (isHotkey && isLast) {
+    // Спека: на горячей клавише A на последней строке копируется пустая строка.
+    text = "";
+  } else {
+    text = await fetchRaw(requestId);
+  }
+  const ok = await copyToClipboard(text);
+  flash(rowEl, ok ? "flash-ok" : "flash-err");
+  setCurrentIndex(isLast ? 0 : rowIndex + 1);
+}
+
+async function handlePaste(rowEl, requestId, rowIndex) {
+  setCurrentIndex(rowIndex);
   const text = await readFromClipboard();
   if (text === null || !text.trim()) {
     flash(rowEl, "flash-err");
     return;
   }
-  try {
-    const ok = await postAnswer(requestId, text);
-    flash(rowEl, ok ? "flash-ok" : "flash-err");
-  } catch (e) {
-    console.error(e);
-    flash(rowEl, "flash-err");
-  }
+  const ok = await postAnswer(requestId, text);
+  flash(rowEl, ok ? "flash-ok" : "flash-err");
+  // После успеха следующий tick уберёт строку.
+  // currentIndex остаётся тем же — теперь указывает на следующую строку.
 }
 
 async function handleOpenModal(requestId) {
@@ -130,9 +159,40 @@ async function handleOpenModal(requestId) {
   }
 }
 
+// -------- Hotkeys --------
+
+async function copyCurrent() {
+  if (rowsCache.length === 0) return;
+  const req = rowsCache[currentIndex];
+  await handleCopy(rowAt(currentIndex), req.id, currentIndex, true);
+}
+
+async function pasteIntoCurrent() {
+  if (rowsCache.length === 0) return;
+  const req = rowsCache[currentIndex];
+  await handlePaste(rowAt(currentIndex), req.id, currentIndex);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (els.modal.open) return;
+  if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
+    e.preventDefault();
+    copyCurrent();
+  } else if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
+    e.preventDefault();
+    pasteIntoCurrent();
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setCurrentIndex(currentIndex + 1);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setCurrentIndex(currentIndex - 1);
+  }
+});
+
 // -------- Render --------
 
-function createRow(req) {
+function createRow(req, idx) {
   const li = document.createElement("li");
   li.className = "row";
   li.dataset.id = req.id;
@@ -151,8 +211,8 @@ function createRow(req) {
   const text = document.createElement("div");
   text.className = "text";
   text.textContent = req.preview;
-  text.title = "Клик — скопировать полный текст";
-  text.addEventListener("click", () => handleCopy(li, req.id));
+  text.title = "Клик — сделать текущим и скопировать";
+  text.addEventListener("click", () => handleCopy(li, req.id, idx, false));
 
   const copyBtn = document.createElement("button");
   copyBtn.className = "btn btn-copy";
@@ -162,7 +222,7 @@ function createRow(req) {
   copyBtn.setAttribute("aria-label", "Копировать");
   copyBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    handleCopy(li, req.id);
+    handleCopy(li, req.id, idx, false);
   });
 
   const pasteBtn = document.createElement("button");
@@ -173,7 +233,7 @@ function createRow(req) {
   pasteBtn.setAttribute("aria-label", "Вставить ответ");
   pasteBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    handlePaste(li, req.id);
+    handlePaste(li, req.id, idx);
   });
 
   li.appendChild(questionBtn);
@@ -184,6 +244,7 @@ function createRow(req) {
 }
 
 function render(reqs) {
+  rowsCache = reqs;
   setCounter(reqs.length);
 
   if (reqs.length === 0) {
@@ -192,18 +253,25 @@ function render(reqs) {
       lastRenderedIds = "";
     }
     els.empty.classList.add("visible");
+    currentIndex = 0;
     return;
   }
   els.empty.classList.remove("visible");
 
+  if (currentIndex >= reqs.length) currentIndex = 0;
+
   const idsKey = reqs.map((r) => r.id).join(",");
-  if (idsKey === lastRenderedIds) return;
+  if (idsKey === lastRenderedIds) {
+    applyCurrentHighlight();
+    return;
+  }
   lastRenderedIds = idsKey;
 
   const frag = document.createDocumentFragment();
-  for (const r of reqs) frag.appendChild(createRow(r));
+  reqs.forEach((r, idx) => frag.appendChild(createRow(r, idx)));
   els.requests.innerHTML = "";
   els.requests.appendChild(frag);
+  applyCurrentHighlight();
 }
 
 // -------- Modal wiring --------
