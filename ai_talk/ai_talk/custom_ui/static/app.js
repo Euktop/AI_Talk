@@ -1,7 +1,7 @@
 "use strict";
 
-// AI_Talk CUSTOM UI — список запросов, копирование, автообновление.
-// Модалка [?], вставка [📥] и горячие клавиши — в следующих фазах.
+// AI_Talk CUSTOM UI — список запросов, копирование, вставка, модалка [?].
+// Горячие клавиши A/B — в Фазе 6.
 
 const REFRESH_INTERVAL_MS = 2000;
 const FLASH_DURATION_MS = 1500;
@@ -10,6 +10,11 @@ const els = {
   requests: document.getElementById("requests"),
   counter: document.getElementById("counter"),
   empty: document.getElementById("empty"),
+  modal: document.getElementById("modal"),
+  modalText: document.getElementById("modal-text"),
+  modalClose: document.getElementById("modal-close"),
+  modalCopy: document.getElementById("modal-copy"),
+  modalDownload: document.getElementById("modal-download"),
 };
 
 let lastRenderedIds = "";
@@ -31,6 +36,18 @@ async function fetchRaw(id) {
   return await r.text();
 }
 
+async function postAnswer(id, answer) {
+  const r = await fetch(
+    "/api/requests/" + encodeURIComponent(id) + "/answer",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer: answer }),
+    }
+  );
+  return r.ok;
+}
+
 // -------- Clipboard --------
 
 async function copyToClipboard(text) {
@@ -43,6 +60,16 @@ async function copyToClipboard(text) {
   }
 }
 
+async function readFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    return text || "";
+  } catch (e) {
+    console.warn("clipboard.readText failed", e);
+    return null;
+  }
+}
+
 // -------- UI helpers --------
 
 function flash(el, cls) {
@@ -52,7 +79,8 @@ function flash(el, cls) {
 }
 
 function setCounter(n) {
-  els.counter.textContent = n + " " + plural(n, ["активный", "активных", "активных"]);
+  els.counter.textContent =
+    n + " " + plural(n, ["активный", "активных", "активных"]);
 }
 
 function plural(n, forms) {
@@ -63,12 +91,62 @@ function plural(n, forms) {
   return forms[2];
 }
 
+// -------- Actions --------
+
+async function handleCopy(rowEl, requestId) {
+  try {
+    const full = await fetchRaw(requestId);
+    const ok = await copyToClipboard(full);
+    flash(rowEl, ok ? "flash-ok" : "flash-err");
+  } catch (e) {
+    console.error(e);
+    flash(rowEl, "flash-err");
+  }
+}
+
+async function handlePaste(rowEl, requestId) {
+  const text = await readFromClipboard();
+  if (text === null || !text.trim()) {
+    flash(rowEl, "flash-err");
+    return;
+  }
+  try {
+    const ok = await postAnswer(requestId, text);
+    flash(rowEl, ok ? "flash-ok" : "flash-err");
+  } catch (e) {
+    console.error(e);
+    flash(rowEl, "flash-err");
+  }
+}
+
+async function handleOpenModal(requestId) {
+  try {
+    const full = await fetchRaw(requestId);
+    els.modalText.textContent = full;
+    els.modalText.dataset.requestId = requestId;
+    els.modal.showModal();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 // -------- Render --------
 
 function createRow(req) {
   const li = document.createElement("li");
   li.className = "row";
   li.dataset.id = req.id;
+
+  const questionBtn = document.createElement("button");
+  questionBtn.className = "btn btn-question";
+  questionBtn.type = "button";
+  questionBtn.textContent = "?";
+  questionBtn.title = "Показать полный запрос";
+  questionBtn.setAttribute("aria-label", "Полный запрос");
+  questionBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    handleOpenModal(req.id);
+  });
 
   const text = document.createElement("div");
   text.className = "text";
@@ -87,20 +165,22 @@ function createRow(req) {
     handleCopy(li, req.id);
   });
 
+  const pasteBtn = document.createElement("button");
+  pasteBtn.className = "btn btn-paste";
+  pasteBtn.type = "button";
+  pasteBtn.textContent = "📥";
+  pasteBtn.title = "Вставить ответ из буфера";
+  pasteBtn.setAttribute("aria-label", "Вставить ответ");
+  pasteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    handlePaste(li, req.id);
+  });
+
+  li.appendChild(questionBtn);
   li.appendChild(text);
   li.appendChild(copyBtn);
+  li.appendChild(pasteBtn);
   return li;
-}
-
-async function handleCopy(rowEl, requestId) {
-  try {
-    const full = await fetchRaw(requestId);
-    const ok = await copyToClipboard(full);
-    flash(rowEl, ok ? "flash-ok" : "flash-err");
-  } catch (e) {
-    console.error(e);
-    flash(rowEl, "flash-err");
-  }
 }
 
 function render(reqs) {
@@ -125,6 +205,29 @@ function render(reqs) {
   els.requests.innerHTML = "";
   els.requests.appendChild(frag);
 }
+
+// -------- Modal wiring --------
+
+els.modalClose.addEventListener("click", () => els.modal.close());
+
+els.modalCopy.addEventListener("click", async () => {
+  const ok = await copyToClipboard(els.modalText.textContent);
+  flash(els.modalCopy, ok ? "flash-ok" : "flash-err");
+});
+
+els.modalDownload.addEventListener("click", () => {
+  const rid = (els.modalText.dataset.requestId || "request").slice(0, 8);
+  const blob = new Blob([els.modalText.textContent], {
+    type: "text/plain;charset=utf-8",
+  });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "request-" + rid + ".txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+});
 
 // -------- Loop --------
 

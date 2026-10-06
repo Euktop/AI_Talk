@@ -17,6 +17,18 @@
     <div id="empty" class="empty">Очередь пуста</div>
   </main>
 
+  <dialog id="modal" class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Полный запрос</span>
+      <button id="modal-close" type="button" class="btn btn-close" aria-label="Закрыть">✕</button>
+    </div>
+    <pre id="modal-text" class="modal-text"></pre>
+    <div class="modal-actions">
+      <button id="modal-copy" type="button" class="action-btn">Копировать всё</button>
+      <button id="modal-download" type="button" class="action-btn">Скачать .txt</button>
+    </div>
+  </dialog>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

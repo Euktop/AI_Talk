@@ -156,7 +156,27 @@ def test_static_app_js_served(client):
 def test_static_style_css_served(client):
     r = client.get("/static/style.css")
     assert r.status_code == 200
-    assert ".row" in r.data.decode("utf-8")
+    css = r.data.decode("utf-8")
+    assert ".row" in css
+    assert ".modal" in css
+    assert ".flash-ok" in css
+
+
+def test_index_contains_modal(client):
+    r = client.get("/")
+    body = r.data.decode("utf-8")
+    assert '<dialog id="modal"' in body
+    assert 'id="modal-text"' in body
+    assert 'id="modal-download"' in body
+
+
+def test_app_js_has_paste_and_modal_handlers(client):
+    r = client.get("/static/app.js")
+    body = r.data.decode("utf-8")
+    assert "handlePaste" in body
+    assert "handleOpenModal" in body
+    assert "readFromClipboard" in body
+    assert "showModal" in body
 
 
 def test_answered_request_excluded_from_list(client):
