@@ -1,10 +1,12 @@
 "use strict";
 
 // AI_Talk CUSTOM UI.
-// Ф5 lifecycle; Ф6 hotkeys; Ф7 PiP + звуки; Ф8 server-status + PiP clipboard bridge.
+// Ф5 lifecycle; Ф6 hotkeys; Ф7 PiP + звуки; Ф8 server-status + PiP bridge;
+// Ф9 diff-render + stable current by id.
 
 const REFRESH_INTERVAL_MS = 2000;
 const FLASH_DURATION_MS = 1500;
+const POST_PASTE_DELAY_MS = 250;
 const MAX_FAILURES = 3;
 
 const els = {
@@ -23,6 +25,7 @@ const els = {
 let lastRenderedIds = "";
 let rowsCache = [];
 let currentIndex = 0;
+let currentId = null;
 let consecutiveFailures = 0;
 
 // -------- API --------
@@ -94,7 +97,6 @@ function soundPaste() { playTone(660, 100); }
 function soundError() { playTone(220, 180); }
 
 // -------- Clipboard --------
-//
 // PiP — отдельный browsing context со своим transient activation.
 // Клик в PiP активирует PiP, но не main. Поэтому clipboard-вызовы
 // исполняем внутри PiP через мост `window.__aiTalkPip`, который
@@ -158,10 +160,17 @@ function rowAt(idx) {
   return els.requests.querySelectorAll(".row")[idx];
 }
 
+function findIndexById(id) {
+  for (let i = 0; i < rowsCache.length; i++) {
+    if (rowsCache[i].id === id) return i;
+  }
+  return -1;
+}
+
 function applyCurrentHighlight() {
   const rows = els.requests.querySelectorAll(".row");
-  rows.forEach((row, idx) => {
-    row.classList.toggle("current", idx === currentIndex);
+  rows.forEach((row) => {
+    row.classList.toggle("current", row.dataset.id === currentId);
   });
 }
 
@@ -169,22 +178,27 @@ function setCurrentIndex(i) {
   const n = rowsCache.length;
   if (n === 0) {
     currentIndex = 0;
+    currentId = null;
     return;
   }
   if (i < 0) i = n - 1;
   if (i >= n) i = 0;
   currentIndex = i;
+  currentId = rowsCache[i].id;
   applyCurrentHighlight();
 }
 
 // -------- Actions --------
 
-async function handleCopy(rowEl, requestId, rowIndex, isHotkey) {
-  setCurrentIndex(rowIndex);
-  const isLast = rowIndex === rowsCache.length - 1;
+async function handleCopy(rowEl, requestId, isHotkey) {
+  const idx = findIndexById(requestId);
+  if (idx >= 0) setCurrentIndex(idx);
+
+  const isLast = idx === rowsCache.length - 1;
   let text;
   try {
     if (isHotkey && isLast) {
+      // Спека: на горячей клавише A на последней строке копируется пустая строка.
       text = "";
     } else {
       text = await fetchRaw(requestId);
@@ -198,11 +212,17 @@ async function handleCopy(rowEl, requestId, rowIndex, isHotkey) {
   const ok = await copyToClipboard(text);
   flash(rowEl, ok ? "flash-ok" : "flash-err");
   if (ok) soundCopy(); else soundError();
-  setCurrentIndex(isLast ? 0 : rowIndex + 1);
+  if (isLast) {
+    setCurrentIndex(0);
+  } else {
+    setCurrentIndex(idx + 1);
+  }
 }
 
-async function handlePaste(rowEl, requestId, rowIndex) {
-  setCurrentIndex(rowIndex);
+async function handlePaste(rowEl, requestId) {
+  const idx = findIndexById(requestId);
+  if (idx >= 0) setCurrentIndex(idx);
+
   const text = await readFromClipboard();
   if (text === null || !text.trim()) {
     flash(rowEl, "flash-err");
@@ -217,7 +237,14 @@ async function handlePaste(rowEl, requestId, rowIndex) {
     ok = false;
   }
   flash(rowEl, ok ? "flash-ok" : "flash-err");
-  if (ok) soundPaste(); else soundError();
+  if (ok) {
+    soundPaste();
+    // Не ждём REFRESH_INTERVAL_MS: обновляем список почти сразу,
+    // чтобы задача не «висела» 2 секунды после ответа.
+    setTimeout(tick, POST_PASTE_DELAY_MS);
+  } else {
+    soundError();
+  }
 }
 
 async function handleOpenModal(requestId) {
@@ -235,14 +262,16 @@ async function handleOpenModal(requestId) {
 
 async function copyCurrent() {
   if (rowsCache.length === 0) return;
-  const req = rowsCache[currentIndex];
-  await handleCopy(rowAt(currentIndex), req.id, currentIndex, true);
+  const req = rowsCache.find((r) => r.id === currentId) || rowsCache[currentIndex];
+  if (!req) return;
+  await handleCopy(rowAt(currentIndex), req.id, true);
 }
 
 async function pasteIntoCurrent() {
   if (rowsCache.length === 0) return;
-  const req = rowsCache[currentIndex];
-  await handlePaste(rowAt(currentIndex), req.id, currentIndex);
+  const req = rowsCache.find((r) => r.id === currentId) || rowsCache[currentIndex];
+  if (!req) return;
+  await handlePaste(rowAt(currentIndex), req.id);
 }
 
 function installKeydown(doc) {
@@ -350,9 +379,9 @@ async function togglePiP() {
 
 els.pipBtn.addEventListener("click", togglePiP);
 
-// -------- Render --------
+// -------- Render (diff) --------
 
-function createRow(req, idx) {
+function createRow(req) {
   const li = document.createElement("li");
   li.className = "row";
   li.dataset.id = req.id;
@@ -372,7 +401,7 @@ function createRow(req, idx) {
   text.className = "text";
   text.textContent = req.preview;
   text.title = "Клик — сделать текущим и скопировать";
-  text.addEventListener("click", () => handleCopy(li, req.id, idx, false));
+  text.addEventListener("click", () => handleCopy(li, req.id, false));
 
   const copyBtn = document.createElement("button");
   copyBtn.className = "btn btn-copy";
@@ -382,7 +411,7 @@ function createRow(req, idx) {
   copyBtn.setAttribute("aria-label", "Копировать");
   copyBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    handleCopy(li, req.id, idx, false);
+    handleCopy(li, req.id, false);
   });
 
   const pasteBtn = document.createElement("button");
@@ -393,7 +422,7 @@ function createRow(req, idx) {
   pasteBtn.setAttribute("aria-label", "Вставить ответ");
   pasteBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    handlePaste(li, req.id, idx);
+    handlePaste(li, req.id);
   });
 
   li.appendChild(questionBtn);
@@ -408,17 +437,24 @@ function render(reqs) {
   setCounter(reqs.length);
 
   if (reqs.length === 0) {
-    if (lastRenderedIds !== "") {
-      els.requests.innerHTML = "";
-      lastRenderedIds = "";
-    }
+    els.requests.innerHTML = "";
     els.empty.classList.add("visible");
     currentIndex = 0;
+    currentId = null;
+    lastRenderedIds = "";
     return;
   }
   els.empty.classList.remove("visible");
 
-  if (currentIndex >= reqs.length) currentIndex = 0;
+  // Подсветка по id: если текущая задача исчезла — привязываемся к той,
+  // что теперь стоит на той же позиции (или к началу, если ушли за край).
+  if (currentId === null || findIndexById(currentId) < 0) {
+    if (currentIndex >= reqs.length) currentIndex = 0;
+    if (currentIndex < 0) currentIndex = 0;
+    currentId = reqs[currentIndex].id;
+  } else {
+    currentIndex = findIndexById(currentId);
+  }
 
   const idsKey = reqs.map((r) => r.id).join(",");
   if (idsKey === lastRenderedIds) {
@@ -427,10 +463,36 @@ function render(reqs) {
   }
   lastRenderedIds = idsKey;
 
-  const frag = document.createDocumentFragment();
-  reqs.forEach((r, idx) => frag.appendChild(createRow(r, idx)));
-  els.requests.innerHTML = "";
-  els.requests.appendChild(frag);
+  // Diff-render: переиспользуем DOM-элементы, не пересоздаём список
+  // целиком. Так не сбрасываются hover, flash-анимация, scroll.
+  const existing = Array.from(els.requests.children);
+  const byId = new Map();
+  existing.forEach((li) => byId.set(li.dataset.id, li));
+
+  // Удалить исчезнувшие
+  existing.forEach((li) => {
+    if (!reqs.find((r) => r.id === li.dataset.id)) {
+      li.remove();
+    }
+  });
+
+  // Вставить/переставить/обновить превью
+  reqs.forEach((r, idx) => {
+    let li = byId.get(r.id);
+    if (!li) {
+      li = createRow(r);
+    } else {
+      const textEl = li.querySelector(".text");
+      if (textEl && textEl.textContent !== r.preview) {
+        textEl.textContent = r.preview;
+      }
+    }
+    const currentAtIdx = els.requests.children[idx];
+    if (currentAtIdx !== li) {
+      els.requests.insertBefore(li, currentAtIdx || null);
+    }
+  });
+
   applyCurrentHighlight();
 }
 

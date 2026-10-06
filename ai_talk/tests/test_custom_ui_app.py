@@ -195,6 +195,21 @@ def test_app_js_has_hotkeys_and_current_row(client):
     assert 'e.key === "ArrowRight"' in body
 
 
+def test_app_js_has_diff_render_and_stable_current(client):
+    r = client.get("/static/app.js")
+    body = r.data.decode("utf-8")
+    # Подсветка привязана к id, а не к индексу — переживает удаление строк.
+    assert "currentId" in body
+    assert "findIndexById" in body
+    assert "setCurrentById" not in body or "currentId =" in body
+    # Diff-render переиспользует DOM-элементы вместо innerHTML = "".
+    assert "byId" in body
+    assert "insertBefore" in body
+    # После paste не ждём 2 сек до tick.
+    assert "POST_PASTE_DELAY_MS" in body
+    assert "setTimeout(tick" in body
+
+
 def test_index_contains_hotkey_hint(client):
     r = client.get("/")
     body = r.data.decode("utf-8")
