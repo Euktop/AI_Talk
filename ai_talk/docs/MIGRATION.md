@@ -26,27 +26,28 @@ Exit: `pytest` зелёный (кроме намеренно падающих т
 
 ## Фаза 2. Новые модули (additive)
 
-- [ ] `ai_talk/parsers.py` — `extract_json`, `parse_json_object`, `parse_json_array`.
-- [ ] `ai_talk/errors.py` — расширенная иерархия (старые классы — там же).
-- [ ] `ai_talk/config/__init__.py` — `AITalkConfig` с дефолтами = старому поведению.
+- [x] `ai_talk/parsers.py` — `extract_json`, `parse_json_object`, `parse_json_array`.
+- [x] `ai_talk/errors.py` — расширенная иерархия (старые классы — там же).
+- [x] `ai_talk/config/__init__.py` — `AITalkConfig` с дефолтами = старому поведению.
   (`ai_talk/config.py` создать нельзя — уже есть пакет `ai_talk/config/`.)
 
 Exit: новые модули импортируются, старые не тронуты, тесты зелёные.
 
 ## Фаза 3. Подключение парсера
 
-- [ ] `OllamaClient.structured_chat` использует `parsers.parse_json_object`.
-- [ ] `ActantAIClient.structured_chat` использует тот же парсер.
-- [ ] `AITalkParsingError` наследует `AITalkGenerationError`.
+- [x] `OllamaClient.structured_chat` использует `parsers.parse_json_object`.
+- [x] `ActantAIClient.structured_chat` использует тот же парсер.
+- [x] `AITalkParsingError` наследует `AITalkGenerationError`.
 
 Exit: старые тесты `ask_ai_structured` зелёные, ошибки парсинга ловятся как
 `AITalkGenerationError`.
 
 ## Фаза 4. Расширение фасада AITalk
 
-- [ ] Принять `config: AITalkConfig | None = None` в конструкторе.
-- [ ] Добавить `ask`, `ask_file`, `ask_json`, `health_check`.
-- [ ] Старые `ask_ai`/`ask_ai_structured` делегируют в новые.
+- [x] Принять `config: AITalkConfig | None = None` в конструкторе.
+- [x] Добавить `ask`, `ask_file`, `ask_json`, `health_check`.
+- [~] Старые `ask_ai`/`ask_ai_structured` делегируют в новые.
+  (Оставлены как есть для 100% совместимости; унификация — опционально в 2.3.)
 
 Exit: старые вызовы работают, новые тоже.
 

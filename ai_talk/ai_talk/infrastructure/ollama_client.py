@@ -1,8 +1,8 @@
-import json
 import ollama
 from typing import List, Dict, Any
 from ai_talk.domain.interfaces import ILLMClient, Message
 from ai_talk.domain.exceptions import AITalkConnectionError, AITalkGenerationError
+from ai_talk.parsers import parse_json_object
 
 class OllamaClient:
     def __init__(self, model: str, host: str = "http://localhost:11434"):
@@ -40,6 +40,6 @@ class OllamaClient:
         try:
             payload = [{"role": m.role, "content": m.content} for m in messages]
             response = self.client.chat(model=self.model, messages=payload, format=response_format)
-            return json.loads(response['message']['content'].strip())
         except Exception as e:
             raise AITalkGenerationError(f"Ошибка структурированной генерации: {e}") from e
+        return parse_json_object(response['message']['content'])

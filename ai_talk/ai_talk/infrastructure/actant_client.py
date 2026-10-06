@@ -1,10 +1,10 @@
 import sys
 from typing import List, Dict, Any
-import json
 
 # Импорты из AI_Talk
 from ai_talk.domain.interfaces import ILLMClient, Message
 from ai_talk.domain.exceptions import AITalkGenerationError
+from ai_talk.parsers import parse_json_object
 
 class ActantAIClient(ILLMClient):
     """Адаптер, интегрирующий ActantAI (браузерные ИИ) в экосистему AI_Talk."""
@@ -77,12 +77,7 @@ class ActantAIClient(ILLMClient):
             Message(role="user", content=f"Ответь СТРОГО в формате JSON. Не пиши ничего кроме валидного JSON. Схема: {response_format}")
         )
         raw_text = self.chat(messages_with_json_req)
-        
-        try:
-            clean_text = raw_text.replace("```json", "").replace("```", "").strip()
-            return json.loads(clean_text)
-        except json.JSONDecodeError:
-            raise AITalkGenerationError("Веб-ИИ вернул невалидный JSON.")
+        return parse_json_object(raw_text)
 
     def close(self):
         """Освобождение ресурсов браузера."""
