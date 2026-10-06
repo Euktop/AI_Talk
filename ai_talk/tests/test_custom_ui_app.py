@@ -140,3 +140,34 @@ def test_index_placeholder(client):
     r = client.get("/")
     assert r.status_code == 200
     assert b"AI_Talk" in r.data
+
+
+def test_answered_request_excluded_from_list(client):
+    r = client.post(
+        "/api/requests", json={"system_prompt": "s", "user_prompt": "u"}
+    )
+    rid = r.get_json()["id"]
+    client.post("/api/requests/{0}/answer".format(rid), json={"answer": "ok"})
+
+    r = client.get("/api/requests")
+    assert r.status_code == 200
+    assert r.get_json() == []
+
+
+def test_ack_deletes_request(client):
+    r = client.post(
+        "/api/requests", json={"system_prompt": "s", "user_prompt": "u"}
+    )
+    rid = r.get_json()["id"]
+
+    r = client.post("/api/requests/{0}/ack".format(rid), json={})
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    r = client.post("/api/requests/{0}/ack".format(rid), json={})
+    assert r.status_code == 404
+
+
+def test_ack_missing_request_returns_404(client):
+    r = client.post("/api/requests/nonexistent/ack", json={})
+    assert r.status_code == 404

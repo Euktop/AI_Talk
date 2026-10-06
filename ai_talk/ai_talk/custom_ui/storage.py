@@ -74,11 +74,13 @@ class Storage:
             ).fetchone()
         return self._row_to_request(row) if row else None
 
-    def list_requests(self) -> List[Request]:
+    def list_requests(self, pending_only: bool = False) -> List[Request]:
+        query = "SELECT * FROM requests"
+        if pending_only:
+            query += " WHERE answer IS NULL"
+        query += " ORDER BY created_at ASC"
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM requests ORDER BY created_at ASC"
-            ).fetchall()
+            rows = conn.execute(query).fetchall()
         return [self._row_to_request(r) for r in rows]
 
     def answer_request(self, request_id: str, answer: str) -> bool:

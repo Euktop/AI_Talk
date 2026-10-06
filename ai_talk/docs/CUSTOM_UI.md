@@ -83,6 +83,11 @@
 | GET | `/api/requests/<id>/raw` | `text/plain` |
 | GET | `/api/requests/<id>/wait` | long-poll |
 | POST | `/api/requests/<id>/answer` | `{answer}`; пусто → 400 |
+| POST | `/api/requests/<id>/ack` | удалить запрос (клиент подтвердил получение) |
+
+`GET /api/requests` возвращает только **неотвеченные** запросы
+(`pending_only=True`). Отвеченный запрос скрывается из списка UI, но
+остаётся в БД до `/ack` от клиента — иначе `wait` не увидел бы ответ.
 
 ## Хранилище
 
@@ -111,8 +116,8 @@ SQLite `~/.ai_talk/custom_ui.db`. Путь переопределяется
 
 | Фаза | Что | Горячие клавиши |
 |---|---|---|
-| **Ф1** | Flask-каркас, SQLite, HTTP API | нет |
-| **Ф2** | `CustomWebClient` + интеграция в `AITalk` + удаление старого CUSTOM | нет |
+| **Ф1** | ✅ Flask-каркас, SQLite, HTTP API | нет |
+| **Ф2** | ✅ `CustomWebClient` + интеграция в `AITalk` + удаление старого CUSTOM | нет |
 | **Ф3** | HTML/CSS/JS: список, копирование | нет |
 | **Ф4** | `[?]` + `[📥]` вставка | нет |
 | **Ф5** | Long-poll, автообновление, lifecycle | нет |

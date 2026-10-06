@@ -35,6 +35,18 @@ def test_list_requests_preserves_order(storage):
     assert ids == [r1.id, r2.id, r3.id]
 
 
+def test_list_requests_pending_only_filters_answered(storage):
+    r1 = storage.create_request("first", "")
+    r2 = storage.create_request("second", "")
+    storage.answer_request(r1.id, "answer1")
+
+    pending = storage.list_requests(pending_only=True)
+    assert [r.id for r in pending] == [r2.id]
+
+    all_reqs = storage.list_requests(pending_only=False)
+    assert [r.id for r in all_reqs] == [r1.id, r2.id]
+
+
 def test_answer_request_sets_answer_and_time(storage):
     req = storage.create_request("s", "u")
     assert storage.answer_request(req.id, "ответ")

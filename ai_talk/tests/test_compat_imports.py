@@ -25,7 +25,7 @@ INTERNAL_MODULES = (
     "ai_talk.domain.exceptions",
     "ai_talk.domain.interfaces",
     "ai_talk.infrastructure.actant_client",
-    "ai_talk.infrastructure.custom_client",
+    "ai_talk.infrastructure.custom_web_client",
     "ai_talk.infrastructure.file_reader",
     "ai_talk.infrastructure.ollama_client",
 )
@@ -53,7 +53,6 @@ def test_named_symbols_in_modules():
         AITalkGenerationError,
     )
     from ai_talk.domain.interfaces import IFileReader, ILLMClient, Message
-    from ai_talk.infrastructure.custom_client import CustomFileClient
     from ai_talk.infrastructure.file_reader import LocalFileReader
     from ai_talk.infrastructure.ollama_client import OllamaClient
 
@@ -64,7 +63,7 @@ def test_named_symbols_in_modules():
     assert issubclass(AITalkConnectionError, AITalkError)
     assert issubclass(AITalkGenerationError, AITalkError)
     assert ILLMClient and IFileReader and Message
-    assert CustomFileClient and LocalFileReader and OllamaClient
+    assert LocalFileReader and OllamaClient
 
 
 def test_version_is_synced_with_pyproject():

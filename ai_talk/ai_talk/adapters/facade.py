@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 from ai_talk.config import AITalkConfig
 from ai_talk.config.models import MODEL_REGISTRY, ModelRole
 from ai_talk.domain.interfaces import IFileReader, ILLMClient, Message
-from ai_talk.infrastructure.custom_client import CustomFileClient
+from ai_talk.infrastructure.custom_web_client import CustomWebClient
 from ai_talk.infrastructure.file_reader import LocalFileReader
 from ai_talk.infrastructure.ollama_client import OllamaClient
 from ai_talk.application.use_cases import AskAIUseCase, GetTextUseCase
@@ -68,7 +68,11 @@ class AITalk:
             self.llm_client: ILLMClient = llm_client
         else:
             self.llm_client = self._build_default_client(
-                effective_model, effective_host, effective_custom_dir, browser_instance_id
+                effective_model,
+                effective_host,
+                effective_custom_dir,
+                browser_instance_id,
+                config=self._config,
             )
 
         self.ask_ai_use_case = AskAIUseCase(self.llm_client, self.file_reader)
@@ -80,10 +84,18 @@ class AITalk:
         host: str,
         custom_dir: str,
         browser_instance_id: int,
+        config: Optional[AITalkConfig] = None,
     ) -> ILLMClient:
         if isinstance(model, ModelRole):
             if model == ModelRole.CUSTOM:
-                return CustomFileClient(custom_dir=custom_dir)
+                if config is not None:
+                    return CustomWebClient(
+                        host=config.custom_ui_host,
+                        port=config.custom_ui_port,
+                        db_path=config.custom_ui_db,
+                        open_browser=config.custom_ui_open_browser,
+                    )
+                return CustomWebClient()
             if model in (ModelRole.WEB_DEEPSEEK, ModelRole.WEB_CHATGPT):
                 # Lazy-импорт: ai_talk импортируется без установленного actantai.
                 from ai_talk.infrastructure.actant_client import ActantAIClient

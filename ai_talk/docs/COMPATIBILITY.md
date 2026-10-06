@@ -89,8 +89,9 @@ AITalkError
 
 ## Что можно менять без предупреждения
 
-- Внутреннюю реализацию клиентов (`OllamaClient`, `CustomFileClient`,
+- Внутреннюю реализацию клиентов (`OllamaClient`, `CustomWebClient`,
   `ActantAIClient`) при сохранении сигнатур `chat` / `structured_chat`.
+  `CustomFileClient` удалён в 2.3.0 (заменён на `CustomWebClient`).
 - Модули `application.use_cases`, `domain.interfaces` — при условии, что
   публичные классы (`AskAIUseCase`, `GetTextUseCase`, `Message`, `ILLMClient`,
   `IFileReader`) остаются импортируемыми.

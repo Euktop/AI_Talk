@@ -64,7 +64,7 @@ def create_app(storage: Storage, static_dir: Optional[Path] = None) -> Flask:
 
     @app.route("/api/requests", methods=["GET"])
     def list_requests():
-        reqs = storage.list_requests()
+        reqs = storage.list_requests(pending_only=True)
         return jsonify(
             [
                 {
@@ -114,6 +114,13 @@ def create_app(storage: Storage, static_dir: Optional[Path] = None) -> Flask:
         ok = storage.answer_request(request_id, answer)
         if not ok:
             return jsonify({"error": "not found or already answered"}), 404
+        return jsonify({"ok": True})
+
+    @app.route("/api/requests/<request_id>/ack", methods=["POST"])
+    def ack_request(request_id):
+        ok = storage.delete_request(request_id)
+        if not ok:
+            return jsonify({"error": "not found"}), 404
         return jsonify({"ok": True})
 
     # -------- root (placeholder until phase 3) --------

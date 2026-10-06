@@ -29,6 +29,11 @@ class AITalkConfig:
     temperature: float = 0.7
     verbose: bool = False
     move_completed_files: bool = True
+    # CUSTOM UI (см. docs/CUSTOM_UI.md)
+    custom_ui_host: str = "127.0.0.1"
+    custom_ui_port: int = 8765
+    custom_ui_db: Optional[Path] = None  # None -> ~/.ai_talk/custom_ui.db
+    custom_ui_open_browser: bool = True
 
 
 __all__ = ["AITalkConfig"]
