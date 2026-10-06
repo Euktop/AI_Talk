@@ -16,8 +16,10 @@ ai = AITalk()
 from pathlib import Path
 from ai_talk import AITalk, AITalkConfig
 
+from ai_talk import ModelRole
+
 config = AITalkConfig(
-    model_role="SMART",            # FAST | SMART | BASE | CUSTOM
+    model_role=ModelRole.SMART,    # ModelRole, не строка
     ollama_host="http://localhost:11434",
     custom_dir=Path("запросы_к_ии"),
     archive_dir=None,              # None -> custom_dir/"архив"

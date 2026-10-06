@@ -15,11 +15,25 @@ def _params(func):
 
 def test_aitalk_init_signature():
     params = _params(AITalk.__init__)
-    assert list(params) == ["model", "host", "custom_dir", "browser_instance_id"]
+    assert list(params) == [
+        "model",
+        "host",
+        "custom_dir",
+        "browser_instance_id",
+        "config",
+        "llm_client",
+        "file_reader",
+    ]
+    # Позиционные (или position-or-keyword) параметры и их дефолты — фиксированы.
+    assert params["model"].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
     assert params["model"].default == ModelRole.BASE
     assert params["host"].default == "http://localhost:11434"
     assert params["custom_dir"].default == "запросы_к_ии"
     assert params["browser_instance_id"].default == 0
+    # Новые параметры — keyword-only и по умолчанию None.
+    for name in ("config", "llm_client", "file_reader"):
+        assert params[name].kind == inspect.Parameter.KEYWORD_ONLY
+        assert params[name].default is None
 
 
 def test_ask_ai_signature():
