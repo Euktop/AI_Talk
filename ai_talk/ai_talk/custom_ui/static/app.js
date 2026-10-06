@@ -1,11 +1,11 @@
 "use strict";
 
 // AI_Talk CUSTOM UI.
-// Ф5: lifecycle — браузер открывает сервер, клиент перепроверяет /health.
-// Ф6: текущая строка + горячие клавиши A (Ctrl+Shift+C) и B (Ctrl+Shift+V).
+// Ф5 lifecycle; Ф6 hotkeys; Ф7 PiP + звуки; Ф8 server-status + PiP clipboard bridge.
 
 const REFRESH_INTERVAL_MS = 2000;
 const FLASH_DURATION_MS = 1500;
+const MAX_FAILURES = 3;
 
 const els = {
   requests: document.getElementById("requests"),
@@ -16,11 +16,14 @@ const els = {
   modalClose: document.getElementById("modal-close"),
   modalCopy: document.getElementById("modal-copy"),
   modalDownload: document.getElementById("modal-download"),
+  pipBtn: document.getElementById("pip-btn"),
+  serverStatus: document.getElementById("server-status"),
 };
 
 let lastRenderedIds = "";
 let rowsCache = [];
 let currentIndex = 0;
+let consecutiveFailures = 0;
 
 // -------- API --------
 
@@ -51,9 +54,63 @@ async function postAnswer(id, answer) {
   return r.ok;
 }
 
+// -------- Sound (Web Audio API, без файлов) --------
+
+let audioCtx = null;
+
+function _ensureAudioCtx() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = new Ctx();
+  }
+  return audioCtx;
+}
+
+function playTone(freq, durationMs) {
+  const ctx = _ensureAudioCtx();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const dur = durationMs / 1000;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.start(now);
+    osc.stop(now + dur);
+  } catch (e) {
+    console.warn("playTone failed", e);
+  }
+}
+
+function soundCopy() { playTone(880, 100); }
+function soundPaste() { playTone(660, 100); }
+function soundError() { playTone(220, 180); }
+
 // -------- Clipboard --------
+//
+// PiP — отдельный browsing context со своим transient activation.
+// Клик в PiP активирует PiP, но не main. Поэтому clipboard-вызовы
+// исполняем внутри PiP через мост `window.__aiTalkPip`, который
+// инжектится в PiP при открытии.
+
+function _pipBridge() {
+  if (!document.body.classList.contains("pip-active")) return null;
+  if (!("documentPictureInPicture" in window)) return null;
+  const pipWin = window.documentPictureInPicture.window;
+  if (!pipWin || !pipWin.__aiTalkPip) return null;
+  return pipWin.__aiTalkPip;
+}
 
 async function copyToClipboard(text) {
+  const bridge = _pipBridge();
+  if (bridge) return await bridge.copy(text);
   try {
     await navigator.clipboard.writeText(text);
     return true;
@@ -64,6 +121,8 @@ async function copyToClipboard(text) {
 }
 
 async function readFromClipboard() {
+  const bridge = _pipBridge();
+  if (bridge) return await bridge.paste();
   try {
     const text = await navigator.clipboard.readText();
     return text || "";
@@ -124,14 +183,21 @@ async function handleCopy(rowEl, requestId, rowIndex, isHotkey) {
   setCurrentIndex(rowIndex);
   const isLast = rowIndex === rowsCache.length - 1;
   let text;
-  if (isHotkey && isLast) {
-    // Спека: на горячей клавише A на последней строке копируется пустая строка.
-    text = "";
-  } else {
-    text = await fetchRaw(requestId);
+  try {
+    if (isHotkey && isLast) {
+      text = "";
+    } else {
+      text = await fetchRaw(requestId);
+    }
+  } catch (e) {
+    console.error("handleCopy fetch failed", e);
+    flash(rowEl, "flash-err");
+    soundError();
+    return;
   }
   const ok = await copyToClipboard(text);
   flash(rowEl, ok ? "flash-ok" : "flash-err");
+  if (ok) soundCopy(); else soundError();
   setCurrentIndex(isLast ? 0 : rowIndex + 1);
 }
 
@@ -140,12 +206,18 @@ async function handlePaste(rowEl, requestId, rowIndex) {
   const text = await readFromClipboard();
   if (text === null || !text.trim()) {
     flash(rowEl, "flash-err");
+    soundError();
     return;
   }
-  const ok = await postAnswer(requestId, text);
+  let ok;
+  try {
+    ok = await postAnswer(requestId, text);
+  } catch (e) {
+    console.error("postAnswer failed", e);
+    ok = false;
+  }
   flash(rowEl, ok ? "flash-ok" : "flash-err");
-  // После успеха следующий tick уберёт строку.
-  // currentIndex остаётся тем же — теперь указывает на следующую строку.
+  if (ok) soundPaste(); else soundError();
 }
 
 async function handleOpenModal(requestId) {
@@ -173,26 +245,110 @@ async function pasteIntoCurrent() {
   await handlePaste(rowAt(currentIndex), req.id, currentIndex);
 }
 
-// e.code — физическая клавиша (KeyC, KeyV), не зависит от раскладки.
-// e.key на русской раскладке даёт "С"/"В" (кириллица).
-document.addEventListener("keydown", (e) => {
-  if (els.modal.open) return;
-  if (e.ctrlKey && e.shiftKey && e.code === "KeyC") {
-    e.preventDefault();
-    e.stopPropagation();
-    copyCurrent();
-  } else if (e.ctrlKey && e.shiftKey && e.code === "KeyV") {
-    e.preventDefault();
-    e.stopPropagation();
-    pasteIntoCurrent();
-  } else if (e.key === "ArrowDown") {
-    e.preventDefault();
-    setCurrentIndex(currentIndex + 1);
-  } else if (e.key === "ArrowUp") {
-    e.preventDefault();
-    setCurrentIndex(currentIndex - 1);
+function installKeydown(doc) {
+  doc.addEventListener("keydown", (e) => {
+    if (els.modal.open) return;
+    if (e.ctrlKey && e.shiftKey && e.code === "KeyC") {
+      e.preventDefault();
+      e.stopPropagation();
+      copyCurrent();
+    } else if (e.ctrlKey && e.shiftKey && e.code === "KeyV") {
+      e.preventDefault();
+      e.stopPropagation();
+      pasteIntoCurrent();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setCurrentIndex(currentIndex + 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setCurrentIndex(currentIndex - 1);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      copyCurrent();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      pasteIntoCurrent();
+    }
+  });
+}
+
+installKeydown(document);
+
+// -------- PiP --------
+
+function _copyStylesToPip(pipWin) {
+  const link = pipWin.document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "/static/style.css";
+  pipWin.document.head.appendChild(link);
+}
+
+function _installPiPClipboardBridge(pipWin) {
+  const src = [
+    "(function(){",
+    "  window.__aiTalkPip = {",
+    "    copy: function(text){",
+    "      return navigator.clipboard.writeText(text).then(",
+    "        function(){ return true; },",
+    "        function(e){ console.warn('pip clipboard.writeText', e); return false; }",
+    "      );",
+    "    },",
+    "    paste: function(){",
+    "      return navigator.clipboard.readText().then(",
+    "        function(t){ return t || ''; },",
+    "        function(e){ console.warn('pip clipboard.readText', e); return null; }",
+    "      );",
+    "    }",
+    "  };",
+    "})();",
+  ].join("\n");
+  const s = pipWin.document.createElement("script");
+  s.textContent = src;
+  pipWin.document.head.appendChild(s);
+}
+
+async function togglePiP() {
+  if (!("documentPictureInPicture" in window)) {
+    flash(els.pipBtn, "flash-err");
+    soundError();
+    return;
   }
-});
+  const existing = window.documentPictureInPicture.window;
+  if (existing) {
+    existing.close();
+    return;
+  }
+  try {
+    const pipWin = await window.documentPictureInPicture.requestWindow({
+      width: 420,
+      height: 600,
+    });
+    _copyStylesToPip(pipWin);
+    _installPiPClipboardBridge(pipWin);
+    pipWin.document.title = "AI_Talk";
+
+    pipWin.document.body.append(els.requests, els.empty);
+    document.body.classList.add("pip-active");
+    els.pipBtn.classList.add("active");
+
+    installKeydown(pipWin.document);
+
+    pipWin.addEventListener("pagehide", () => {
+      document.body.classList.remove("pip-active");
+      els.pipBtn.classList.remove("active");
+      const main = document.querySelector("main.main");
+      if (main) {
+        main.append(els.requests, els.empty);
+      }
+    });
+  } catch (e) {
+    console.error("PiP failed", e);
+    flash(els.pipBtn, "flash-err");
+    soundError();
+  }
+}
+
+els.pipBtn.addEventListener("click", togglePiP);
 
 // -------- Render --------
 
@@ -285,6 +441,7 @@ els.modalClose.addEventListener("click", () => els.modal.close());
 els.modalCopy.addEventListener("click", async () => {
   const ok = await copyToClipboard(els.modalText.textContent);
   flash(els.modalCopy, ok ? "flash-ok" : "flash-err");
+  if (ok) soundCopy(); else soundError();
 });
 
 els.modalDownload.addEventListener("click", () => {
@@ -301,14 +458,44 @@ els.modalDownload.addEventListener("click", () => {
   URL.revokeObjectURL(a.href);
 });
 
+// -------- Server status --------
+
+function setServerStatus(online) {
+  if (!els.serverStatus) return;
+  if (online) {
+    els.serverStatus.classList.remove("visible");
+    els.serverStatus.textContent = "";
+  } else {
+    els.serverStatus.textContent = "Сервер AI_Talk отключён. Закройте вкладку.";
+    els.serverStatus.classList.add("visible");
+  }
+}
+
+function closePiPIfOpen() {
+  if (!("documentPictureInPicture" in window)) return;
+  const pipWin = window.documentPictureInPicture.window;
+  if (pipWin) {
+    try { pipWin.close(); } catch (e) { /* ignore */ }
+  }
+}
+
+window.addEventListener("pagehide", closePiPIfOpen);
+
 // -------- Loop --------
 
 async function tick() {
   try {
     const reqs = await fetchRequests();
+    consecutiveFailures = 0;
+    setServerStatus(true);
     render(reqs);
   } catch (e) {
+    consecutiveFailures++;
     console.error("tick failed", e);
+    if (consecutiveFailures >= MAX_FAILURES) {
+      setServerStatus(false);
+      closePiPIfOpen();
+    }
   }
 }
 

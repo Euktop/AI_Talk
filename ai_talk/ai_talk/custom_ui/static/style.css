@@ -26,6 +26,12 @@ html, body {
   border-bottom: 1px solid #e8eaed;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .title {
   margin: 0;
   font-size: 18px;
@@ -41,6 +47,24 @@ html, body {
   color: #1a73e8;
   font-size: 13px;
   font-weight: 600;
+}
+
+.btn-pip {
+  font-size: 15px;
+  color: #1a73e8;
+}
+
+.btn-pip:hover {
+  background: #e8f0fe;
+}
+
+.btn-pip.active {
+  background: #1a73e8;
+  color: #ffffff;
+}
+
+.btn-pip.active:hover {
+  background: #1558b8;
 }
 
 .main {
@@ -156,6 +180,48 @@ html, body {
   display: block;
 }
 
+/* -------- Server status -------- */
+
+.server-status {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 16px;
+  background: #fce8e6;
+  color: #ea4335;
+  font-weight: 600;
+  text-align: center;
+  font-size: 14px;
+  z-index: 9999;
+}
+
+.server-status.visible {
+  display: block;
+}
+
+.hint {
+  max-width: 960px;
+  margin: 24px auto 0;
+  padding: 0 24px;
+  color: #5f6368;
+  font-size: 12px;
+  text-align: center;
+}
+
+.hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid #dadce0;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  color: #202124;
+}
+
 /* -------- Modal -------- */
 
 .modal {
@@ -244,25 +310,11 @@ html, body {
   border-color: #ea4335;
 }
 
-/* -------- Hint -------- */
+/* -------- PiP -------- */
 
-.hint {
-  max-width: 960px;
-  margin: 24px auto 0;
-  padding: 0 24px;
-  color: #5f6368;
-  font-size: 12px;
-  text-align: center;
-}
-
-.hint kbd {
-  display: inline-block;
-  padding: 1px 6px;
-  border: 1px solid #dadce0;
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: #ffffff;
-  font-family: inherit;
-  font-size: 11px;
-  color: #202124;
+/* Когда контент перенесён в PiP-окно, body основного окна пустеет. */
+body.pip-active .main,
+body.pip-active .hint {
+  opacity: 0.3;
+  pointer-events: none;
 }

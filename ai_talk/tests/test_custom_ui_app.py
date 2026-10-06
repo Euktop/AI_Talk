@@ -189,6 +189,10 @@ def test_app_js_has_hotkeys_and_current_row(client):
     assert "ctrlKey" in body
     assert "shiftKey" in body
     assert "rowsCache" in body
+    assert 'e.code === "KeyC"' in body
+    assert 'e.code === "KeyV"' in body
+    assert 'e.key === "ArrowLeft"' in body
+    assert 'e.key === "ArrowRight"' in body
 
 
 def test_index_contains_hotkey_hint(client):
@@ -198,6 +202,50 @@ def test_index_contains_hotkey_hint(client):
     assert "Shift" in body
     assert "копировать текущий" in body
     assert "вставить ответ" in body
+
+
+def test_index_contains_pip_button(client):
+    r = client.get("/")
+    body = r.data.decode("utf-8")
+    assert 'id="pip-btn"' in body
+    assert "поверх всех" in body
+
+
+def test_app_js_has_sounds_and_pip(client):
+    r = client.get("/static/app.js")
+    body = r.data.decode("utf-8")
+    assert "playTone" in body
+    assert "soundCopy" in body
+    assert "soundPaste" in body
+    assert "soundError" in body
+    assert "AudioContext" in body
+    assert "togglePiP" in body
+    assert "documentPictureInPicture" in body
+    assert "installKeydown" in body
+
+
+def test_index_contains_server_status(client):
+    r = client.get("/")
+    body = r.data.decode("utf-8")
+    assert 'id="server-status"' in body
+
+
+def test_app_js_has_pip_bridge_and_server_status(client):
+    r = client.get("/static/app.js")
+    body = r.data.decode("utf-8")
+    assert "_installPiPClipboardBridge" in body
+    assert "_pipBridge" in body
+    assert "closePiPIfOpen" in body
+    assert "consecutiveFailures" in body
+    assert "__aiTalkPip" in body
+    assert "setServerStatus" in body
+
+
+def test_style_has_server_status(client):
+    r = client.get("/static/style.css")
+    css = r.data.decode("utf-8")
+    assert ".server-status" in css
+    assert ".server-status.visible" in css
 
 
 def test_static_style_has_current_row(client):

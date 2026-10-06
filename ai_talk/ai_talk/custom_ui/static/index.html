@@ -7,9 +7,13 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <div id="server-status" class="server-status"></div>
   <header class="topbar">
     <h1 class="title">AI_Talk</h1>
-    <span id="counter" class="counter">0</span>
+    <div class="topbar-right">
+      <span id="counter" class="counter">0</span>
+      <button id="pip-btn" type="button" class="btn btn-pip" title="Открыть поверх всех окон (PiP)" aria-label="PiP">📌</button>
+    </div>
   </header>
 
   <main class="main">
@@ -18,9 +22,10 @@
   </main>
 
   <div class="hint">
-    <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> — копировать текущий и перейти дальше ·
-    <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> — вставить ответ в текущий ·
-    <kbd>↑</kbd>/<kbd>↓</kbd> — сменить текущий
+    <kbd>←</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> — копировать текущий и перейти дальше ·
+    <kbd>→</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> — вставить ответ в текущий ·
+    <kbd>↑</kbd>/<kbd>↓</kbd> — сменить текущий ·
+    <kbd>📌</kbd> — поверх всех окон
   </div>
 
   <dialog id="modal" class="modal">
