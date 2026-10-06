@@ -1,0 +1,23 @@
+[project]
+name = "tag_summary"
+version = "0.1.0"
+description = "AI-driven tag collection, clustering and application for Obsidian vault"
+requires-python = ">=3.10"
+dependencies = [
+    "ai_talk",
+    "jasonutils",
+    "command_engine",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff", "mypy"]
+
+[project.scripts]
+tag_summary = "tag_summary.adapters.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
