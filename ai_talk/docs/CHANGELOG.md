@@ -2,6 +2,50 @@
 
 Все заметные изменения проекта. Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 
+## [2.3.0] — 2026-10-06
+
+### Добавлено
+
+- **CUSTOM UI** — локальный web-интерфейс для ручного ответа на запросы.
+  Запускается автоматически при первом `ask_ai()` в режиме `ModelRole.CUSTOM`.
+  Сервер на `127.0.0.1:8765`, SQLite в `~/.ai_talk/custom_ui.db`.
+  - Список активных запросов с превью.
+  - Клик по тексту или `[📋]` — копировать полный запрос в буфер.
+  - `[?]` — модалка с полным текстом + «Скачать .txt».
+  - `[📥]` — вставить ответ из буфера и удалить запрос.
+  - Горячие клавиши `Ctrl+Shift+C` / `Ctrl+Shift+V` для копирования
+    и вставки текущей строки, `↑`/`↓` для навигации.
+  - Lifecycle: сервер поднимается lazily, выходит через 5 секунд
+    простоя после завершения скрипта.
+- `[project.optional-dependencies].ui = ["flask>=3"]`.
+- `AITalkConfig.custom_ui_host`, `.custom_ui_port`, `.custom_ui_db`,
+  `.custom_ui_open_browser`.
+
+### Удалено
+
+- `CustomFileClient` (файловая очередь `запросы_к_ии/*.md`,
+  папка `архив/`, префикс `done_`, маркер `## 🟢 ВАШ ОТВЕТ`).
+  Заменён на `CustomWebClient` + `ai_talk.custom_ui`.
+
+### Изменено
+
+- **Поведенческий breaking change:** `ModelRole.CUSTOM` теперь
+  открывает браузер и требует установленного `flask`
+  (`pip install ai_talk[ui]`). Старые скрипты, читавшие файлы
+  очереди напрямую, должны перейти на новый режим.
+- `AITalk.__init__(custom_dir=...)` принимается для совместимости,
+  но игнорируется. Используйте `AITalkConfig.custom_ui_db`.
+- `AITalk.health_check().installed_models` теперь читает оба поля
+  `name` / `model` из ответа Ollama SDK.
+
+### Не изменено
+
+- Сигнатуры `ask_ai`, `ask_ai_structured`, `get_text`, `close`.
+- Позиционные параметры `AITalk.__init__`.
+- `ModelRole.CUSTOM` как значение — осталось, меняется реализация.
+- `ask`, `ask_file`, `ask_json`, `run_template`, `register_template`.
+- Ollama-режим и WEB-режим без изменений.
+
 ## [2.2.0] — 2026-10-06
 
 ### Добавлено
@@ -43,3 +87,4 @@
   маркер `## 🟢 ВАШ ОТВЕТ`.
 
 [2.2.0]: https://github.com/Euktop/AI_Talk/releases/tag/v2.2.0
+[2.3.0]: https://github.com/Euktop/AI_Talk/releases/tag/v2.3.0

@@ -13,7 +13,7 @@ from ai_talk.domain.exceptions import (
 from ai_talk.application.prompts import Prompts
 from ai_talk.templates import TemplateRegistry, TemplateSpec, default_registry
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 __all__ = [
     "AITalk",
     "AITalkConfig",
