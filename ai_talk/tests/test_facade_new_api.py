@@ -111,3 +111,41 @@ def test_health_check_returns_status_object():
     assert isinstance(status.actantai_available, bool)
     assert isinstance(status.ollama_available, bool)
     assert isinstance(status.installed_models, list)
+
+
+def test_ask_many_returns_answers_in_order():
+    class OrderedFakeClient:
+        def __init__(self):
+            import threading
+            self._lock = threading.Lock()
+            self._answers = []
+
+        def chat(self, messages, temperature=0.7):
+            prompt = messages[-1].content
+            import time
+            time.sleep(0.01)  # имитация задержки
+            with self._lock:
+                self._answers.append("echo:" + prompt)
+            return "echo:" + prompt
+
+        def structured_chat(self, messages, response_format="json"):
+            return {}
+
+    ai = AITalk(llm_client=OrderedFakeClient())
+    results = ai.ask_many(["a", "b", "c"])
+    assert results == ["echo:a", "echo:b", "echo:c"]
+
+
+def test_ask_many_empty_list():
+    fake = FakeLLMClient()
+    ai = AITalk(llm_client=fake)
+    assert ai.ask_many([]) == []
+
+
+def test_ask_many_respects_system_prompt():
+    fake = FakeLLMClient(chat_responses=["r1", "r2"])
+    ai = AITalk(llm_client=fake)
+    ai.ask_many(["a", "b"], system_prompt="SYS")
+    for messages, _ in fake.chat_calls:
+        assert messages[0].role == "system"
+        assert messages[0].content == "SYS"

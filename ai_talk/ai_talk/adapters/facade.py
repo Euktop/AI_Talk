@@ -174,6 +174,39 @@ class AITalk:
         """Синоним ask("", source=path, system_prompt=...). Возвращает str."""
         return self.ask("", source=path, system_prompt=system_prompt)
 
+    def ask_many(
+        self,
+        prompts: List[str],
+        *,
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_workers: int = 8,
+    ) -> List[str]:
+        """Отправляет несколько запросов параллельно.
+
+        В CUSTOM-режиме все запросы появляются в UI сразу, пользователь
+        отвечает в любом порядке. Возвращает список ответов в порядке prompts.
+
+        В Ollama-режиме просто параллельные вызовы одного и того же клиента;
+        параллелизм ограничен max_workers.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        if not prompts:
+            return []
+        n = min(max_workers, len(prompts))
+        with ThreadPoolExecutor(max_workers=n) as ex:
+            futures = [
+                ex.submit(
+                    self.ask,
+                    p,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                )
+                for p in prompts
+            ]
+            return [f.result() for f in futures]
+
     def ask_json(
         self,
         prompt: str,

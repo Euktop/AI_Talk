@@ -173,13 +173,17 @@ async function pasteIntoCurrent() {
   await handlePaste(rowAt(currentIndex), req.id, currentIndex);
 }
 
+// e.code — физическая клавиша (KeyC, KeyV), не зависит от раскладки.
+// e.key на русской раскладке даёт "С"/"В" (кириллица).
 document.addEventListener("keydown", (e) => {
   if (els.modal.open) return;
-  if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
+  if (e.ctrlKey && e.shiftKey && e.code === "KeyC") {
     e.preventDefault();
+    e.stopPropagation();
     copyCurrent();
-  } else if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
+  } else if (e.ctrlKey && e.shiftKey && e.code === "KeyV") {
     e.preventDefault();
+    e.stopPropagation();
     pasteIntoCurrent();
   } else if (e.key === "ArrowDown") {
     e.preventDefault();

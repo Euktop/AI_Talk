@@ -9,6 +9,7 @@ import atexit
 import json
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -121,31 +122,35 @@ class CustomWebClient:
         self.base_url = "http://{0}:{1}".format(host, port)
         self.client_id = str(uuid.uuid4())
         self._registered = False
+        self._lock = threading.Lock()
         atexit.register(self._unregister)
 
     # -------- lifecycle --------
 
     def _ensure_registered(self) -> None:
-        # Перепроверяем /health на каждом вызове: сервер мог умереть
-        # между вызовами chat(), например, если пользователь закрыл окно.
-        if self._registered and _is_server_ready(self.host, self.port):
-            return
-        self._registered = False
-        if not _is_server_ready(self.host, self.port):
-            if not _start_server(
-                self.host,
-                self.port,
-                self.db_path,
-                open_browser=self.open_browser,
-            ):
-                raise AITalkConnectionError(
-                    "CUSTOM UI сервер не отвечает на {0}".format(self.base_url)
-                )
-        _http_post(
-            self.base_url + "/api/clients/register",
-            {"client_id": self.client_id},
-        )
-        self._registered = True
+        # Lock защищает от гонки при параллельных ask_many():
+        # без него несколько потоков одновременно стартуют subprocess.
+        with self._lock:
+            # Перепроверяем /health на каждом вызове: сервер мог умереть
+            # между вызовами chat(), например, если пользователь закрыл окно.
+            if self._registered and _is_server_ready(self.host, self.port):
+                return
+            self._registered = False
+            if not _is_server_ready(self.host, self.port):
+                if not _start_server(
+                    self.host,
+                    self.port,
+                    self.db_path,
+                    open_browser=self.open_browser,
+                ):
+                    raise AITalkConnectionError(
+                        "CUSTOM UI сервер не отвечает на {0}".format(self.base_url)
+                    )
+            _http_post(
+                self.base_url + "/api/clients/register",
+                {"client_id": self.client_id},
+            )
+            self._registered = True
 
     def _unregister(self) -> None:
         if not self._registered:
